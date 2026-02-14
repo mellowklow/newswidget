@@ -17,24 +17,23 @@ body {
   width: 100%;
   height: 80px;
   display: flex;
-  background: linear-gradient(90deg, #ff8a00, #ff3d00);
   box-shadow: 0 -3px 10px rgba(0,0,0,0.4);
 }
 
-/* ===== 左ラベル ===== */
+/* ===== 左ラベル（黒） ===== */
 .news-label {
   width: 140px;
   min-width: 140px;
   display: flex;
   justify-content: center;
   align-items: center;
-  background: #ffffff;
+  background: #000000;
 }
 
 .live {
   font-weight: bold;
   font-size: 18px;
-  color: #fff;
+  color: #ffffff;
   background: #ff0000;
   padding: 6px 14px;
   border-radius: 20px;
@@ -47,13 +46,13 @@ body {
   50% { opacity: 0.5; }
 }
 
-/* ===== スクロール領域 ===== */
+/* ===== スクロール領域（緑背景） ===== */
 .ticker-container {
   flex: 1;
   overflow: hidden;
   display: flex;
   align-items: center;
-  background: rgba(255,255,255,0.1);
+  background: linear-gradient(90deg, #0f9d58, #0c7a45);
 }
 
 /* ===== テキスト ===== */
@@ -63,7 +62,7 @@ body {
   font-size: 28px;
   font-weight: bold;
   color: #ffffff;
-  text-shadow: 2px 2px 6px rgba(0,0,0,0.4);
+  text-shadow: 2px 2px 6px rgba(0,0,0,0.5);
   animation: scroll 60s linear infinite;
 }
 
@@ -142,7 +141,6 @@ async function updateTicker() {
 
     const highlighted = highlightImportant(news);
 
-    /* 少し間隔をあけて連結 */
     document.getElementById("tickerText").innerHTML =
       highlighted + " ｜　　　｜ " + highlighted + " ｜ ";
   }
@@ -155,3 +153,4 @@ setInterval(updateTicker, 30000);
 
 </body>
 </html>
+
