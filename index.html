@@ -36,28 +36,19 @@ body {
     0 0 40px #ff2200;
 }
 
-/* 横スクロール */
 @keyframes ticker {
   0% { transform: translateX(0); }
   100% { transform: translateX(-100%); }
 }
 
-/* 発光揺らぎ */
 @keyframes glow {
-  from { text-shadow:
-    0 0 5px #ff6600,
-    0 0 15px #ff6600,
-    0 0 30px #ff3300; }
-  to { text-shadow:
-    0 0 10px #ffaa00,
-    0 0 25px #ff6600,
-    0 0 45px #ff3300; }
+  from {
+    text-shadow: 0 0 5px #ff6600, 0 0 15px #ff6600, 0 0 30px #ff3300;
+  }
+  to {
+    text-shadow: 0 0 10px #ffaa00, 0 0 25px #ff6600, 0 0 45px #ff3300;
+  }
 }
-
-/* カテゴリ別色 */
-.news-politics { color: #ff6600; text-shadow:0 0 5px #ff6600,0 0 10px #ff6600; }
-.news-entertainment { color: #ffaa66; text-shadow:0 0 5px #ffaa66,0 0 10px #ffaa66; }
-.news-other { color: #ff8800; text-shadow:0 0 5px #ff8800,0 0 10px #ff8800; }
 </style>
 </head>
 <body>
@@ -70,34 +61,24 @@ body {
 
 <script>
 
-// ===== ニュースRSS =====
-const NEWS_URL = "https://api.allorigins.win/get?url=" + encodeURIComponent("https://news.yahoo.co.jp/rss/topics/top-picks.xml");
+// ===== APIキー（あなたのキーを入れる）=====
+const STOCK_API_KEY = "あなたのAlphaVantageキー";
 
-
-// ===== Alpha Vantage APIキー =====
-const STOCK_API_KEY = "IK11DTVQXPQNPZJ1";
-
-// ===== 前回取得ニュース保存 =====
+// ===== 前回保存用 =====
 let lastNews = "ニュース取得中...";
-
-// ===== 前回株価保存 =====
 let lastNikkei = null;
 let lastUSDJPY = null;
 
-// ===== ニュース取得（フォールバック＋カテゴリ色分け） =====
+// ===== ニュース取得（CORS回避）=====
 async function fetchNews() {
   try {
     const rssUrl = "https://news.yahoo.co.jp/rss/topics/top-picks.xml";
     const proxyUrl = "https://api.allorigins.win/get?url=" + encodeURIComponent(rssUrl);
 
     const res = await fetch(proxyUrl);
-
-    if (!res.ok) {
-      throw new Error("HTTPエラー");
-    }
+    if (!res.ok) throw new Error("HTTPエラー");
 
     const data = await res.json();
-
     const parser = new DOMParser();
     const xml = parser.parseFromString(data.contents, "text/xml");
     const items = xml.querySelectorAll("item");
@@ -111,56 +92,61 @@ async function fetchNews() {
     console.error("ニュース取得エラー:", error);
     lastNews = "ニュース取得エラー";
   }
-}
 
-
-        // 簡易カテゴリ判定
-        let cls = 'news-other';
-        const title = item.title;
-        if(/経済|政治|政府|内閣/.test(title)) cls='news-politics';
-        else if(/芸能|映画|ドラマ|音楽/.test(title)) cls='news-entertainment';
-        return `<span class="${cls}">${title}</span>`;
-      }).join(" ｜ ");
-    }
-  } catch {
-    // 取得失敗時は lastNews を使用
-  }
   return lastNews;
 }
 
-// ===== 日経平均取得（上昇下降▲▼表示） =====
+// ===== 日経平均取得（▲▼表示）=====
 async function fetchNikkei() {
   try {
     const res = await fetch(
-      `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=^N225&apikey=${STOCK_API_KEY}`
+      `https://api.allorigins.win/get?url=${encodeURIComponent(
+        `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=EWJ&apikey=${STOCK_API_KEY}`
+      )}`
     );
-    const data = await res.json();
+
+    const proxyData = await res.json();
+    const data = JSON.parse(proxyData.contents);
+
     const price = parseFloat(data["Global Quote"]["05. price"]);
-    let symbol = '';
-    if(lastNikkei !== null){
-      symbol = price > lastNikkei ? '▲' : (price < lastNikkei ? '▼' : '');
+    if (!price) throw new Error("価格取得失敗");
+
+    let symbol = "";
+    if (lastNikkei !== null) {
+      symbol = price > lastNikkei ? "▲" : price < lastNikkei ? "▼" : "";
     }
     lastNikkei = price;
-    return `【日経平均】${price}円 ${symbol}`;
+
+    return `【日経ETF】${price.toFixed(2)} ${symbol}`;
+
   } catch {
     return "日経取得エラー";
   }
 }
 
-// ===== ドル円取得（上昇下降▲▼表示） =====
+// ===== ドル円取得（▲▼表示）=====
 async function fetchUSDJPY() {
   try {
     const res = await fetch(
-      `https://www.alphavantage.co/query?function=CURRENCY_EXCHANGE_RATE&from_currency=USD&to_currency=JPY&apikey=${STOCK_API_KEY}`
+      `https://api.allorigins.win/get?url=${encodeURIComponent(
+        `https://www.alphavantage.co/query?function=CURRENCY_EXCHANGE_RATE&from_currency=USD&to_currency=JPY&apikey=${STOCK_API_KEY}`
+      )}`
     );
-    const data = await res.json();
+
+    const proxyData = await res.json();
+    const data = JSON.parse(proxyData.contents);
+
     const rate = parseFloat(data["Realtime Currency Exchange Rate"]["5. Exchange Rate"]);
-    let symbol = '';
-    if(lastUSDJPY !== null){
-      symbol = rate > lastUSDJPY ? '▲' : (rate < lastUSDJPY ? '▼' : '');
+    if (!rate) throw new Error("為替取得失敗");
+
+    let symbol = "";
+    if (lastUSDJPY !== null) {
+      symbol = rate > lastUSDJPY ? "▲" : rate < lastUSDJPY ? "▼" : "";
     }
     lastUSDJPY = rate;
+
     return `【ドル円】${rate.toFixed(2)} ${symbol}`;
+
   } catch {
     return "為替取得エラー";
   }
@@ -176,12 +162,13 @@ async function updateTicker() {
   document.getElementById("tickerText").innerHTML = text;
 }
 
-// 初回表示＆30秒ごと更新
+// 初回実行
 updateTicker();
-setInterval(updateTicker, 30000);
+
+// 60秒ごと更新（API制限対策）
+setInterval(updateTicker, 60000);
 
 </script>
 
 </body>
 </html>
-
