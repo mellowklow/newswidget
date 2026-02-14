@@ -7,7 +7,7 @@ body {
   margin: 0;
   background: transparent;
   overflow: hidden;
-  font-family: "Helvetica Neue", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+  font-family: "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
 }
 
 /* ===== 全体バー ===== */
@@ -15,65 +15,67 @@ body {
   position: fixed;
   bottom: 0;
   width: 100%;
-  height: 75px;
+  height: 80px;
   display: flex;
-  background: #1a1a1a;
-  border-top: 5px solid #ff6600;
+  background: linear-gradient(90deg, #ff8a00, #ff3d00);
+  box-shadow: 0 -3px 10px rgba(0,0,0,0.4);
 }
 
-/* ===== 左ラベル（固定領域） ===== */
+/* ===== 左ラベル ===== */
 .news-label {
   width: 140px;
   min-width: 140px;
   display: flex;
   justify-content: center;
   align-items: center;
-  background: linear-gradient(135deg, #ff6600, #ff3300);
+  background: #ffffff;
 }
 
-/* LIVE表示のみ */
 .live {
-  color: #fff;
   font-weight: bold;
   font-size: 18px;
-  letter-spacing: 2px;
-  background: #c40000;
-  padding: 6px 12px;
-  border-radius: 4px;
-  animation: blink 1.5s infinite;
+  color: #fff;
+  background: #ff0000;
+  padding: 6px 14px;
+  border-radius: 20px;
+  box-shadow: 0 0 10px rgba(255,0,0,0.6);
+  animation: blink 1.2s infinite;
 }
 
 @keyframes blink {
   0%,100% { opacity: 1; }
-  50% { opacity: 0.4; }
+  50% { opacity: 0.5; }
 }
 
-/* ===== スクロール領域（完全分離） ===== */
+/* ===== スクロール領域 ===== */
 .ticker-container {
   flex: 1;
-  overflow: hidden; /* ←ここ重要 */
+  overflow: hidden;
   display: flex;
   align-items: center;
+  background: rgba(255,255,255,0.1);
 }
 
-/* ===== ニューステキスト ===== */
+/* ===== テキスト ===== */
 .news-ticker {
+  display: inline-block;
   white-space: nowrap;
   font-size: 28px;
+  font-weight: bold;
   color: #ffffff;
-  animation: scroll 90s linear infinite;
+  text-shadow: 2px 2px 6px rgba(0,0,0,0.4);
+  animation: scroll 60s linear infinite;
 }
 
-/* スクロール */
+/* 少し余白を残すループ */
 @keyframes scroll {
-  from { transform: translateX(100%); }
-  to { transform: translateX(-100%); }
+  from { transform: translateX(0); }
+  to   { transform: translateX(-60%); }
 }
 
 /* 重要ワード */
 .important {
-  color: #ffcc00;
-  font-weight: bold;
+  color: #ffff00;
 }
 </style>
 </head>
@@ -95,7 +97,7 @@ body {
 
 let lastNews = "";
 
-/* ===== ニュース取得（安定版） ===== */
+/* ===== ニュース取得 ===== */
 async function fetchNews() {
   try {
     const rssUrl = "https://news.yahoo.co.jp/rss/topics/top-picks.xml";
@@ -122,7 +124,7 @@ async function fetchNews() {
   }
 }
 
-/* 重要ワード強調 */
+/* 重要ワード */
 function highlightImportant(text) {
   const keywords = ["速報","地震","緊急","総理","日銀","円安","事件"];
   keywords.forEach(word => {
@@ -137,8 +139,12 @@ async function updateTicker() {
 
   if (news && news !== lastNews) {
     lastNews = news;
+
+    const highlighted = highlightImportant(news);
+
+    /* 少し間隔をあけて連結 */
     document.getElementById("tickerText").innerHTML =
-      highlightImportant(news) + " ｜ ";
+      highlighted + " ｜　　　｜ " + highlighted + " ｜ ";
   }
 }
 
