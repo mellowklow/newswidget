@@ -61,15 +61,11 @@ body {
 
 <script>
 
-// ===== APIキー =====
-const STOCK_API_KEY = "IK11DTVQXPQNPZJ1";
-
 // ===== キャッシュ保存 =====
 let lastNews = "ニュース取得中...";
-let lastNikkei = null;
+let lastEWJ = null;
 let lastUSDJPY = null;
-let cachedNikkei = "日経取得中...";
-let cachedUSD = "為替取得中...";
+let cachedStockText = "株価取得中...";
 
 // ===== ニュース取得（CORS回避）=====
 async function fetchNews() {
@@ -78,9 +74,8 @@ async function fetchNews() {
     const proxyUrl = "https://api.allorigins.win/get?url=" + encodeURIComponent(rssUrl);
 
     const res = await fetch(proxyUrl);
-    if (!res.ok) throw new Error("HTTPエラー");
-
     const data = await res.json();
+
     const parser = new DOMParser();
     const xml = parser.parseFromString(data.contents, "text/xml");
     const items = xml.querySelectorAll("item");
@@ -97,84 +92,63 @@ async function fetchNews() {
   return lastNews;
 }
 
-// ===== 日経ETF取得（EWJ使用・▲▼表示）=====
-async function fetchNikkei() {
+// ===== Yahoo Finance株価取得 =====
+async function fetchStocks() {
   try {
-    const res = await fetch(
-      `https://api.allorigins.win/get?url=${encodeURIComponent(
-        `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=EWJ&apikey=${STOCK_API_KEY}`
-      )}`
-    );
+    const url = "https://query1.finance.yahoo.com/v7/finance/quote?symbols=EWJ,JPY=X";
+    const proxyUrl = "https://api.allorigins.win/get?url=" + encodeURIComponent(url);
 
+    const res = await fetch(proxyUrl);
     const proxyData = await res.json();
     const data = JSON.parse(proxyData.contents);
 
-    const price = parseFloat(data["Global Quote"]["05. price"]);
-    if (!price) throw new Error();
+    const results = data.quoteResponse.result;
 
-    let symbol = "";
-    if (lastNikkei !== null) {
-      symbol = price > lastNikkei ? "▲" : price < lastNikkei ? "▼" : "";
+    const ewj = results.find(r => r.symbol === "EWJ");
+    const usd = results.find(r => r.symbol === "JPY=X");
+
+    const ewjPrice = ewj.regularMarketPrice;
+    const usdPrice = usd.regularMarketPrice;
+
+    let ewjSymbol = "";
+    let usdSymbol = "";
+
+    if (lastEWJ !== null) {
+      ewjSymbol = ewjPrice > lastEWJ ? "▲" : ewjPrice < lastEWJ ? "▼" : "";
     }
-    lastNikkei = price;
 
-    return `【日経ETF】${price.toFixed(2)} ${symbol}`;
-
-  } catch {
-    return cachedNikkei; // 失敗時は前回値維持
-  }
-}
-
-// ===== ドル円取得（▲▼表示）=====
-async function fetchUSDJPY() {
-  try {
-    const res = await fetch(
-      `https://api.allorigins.win/get?url=${encodeURIComponent(
-        `https://www.alphavantage.co/query?function=CURRENCY_EXCHANGE_RATE&from_currency=USD&to_currency=JPY&apikey=${STOCK_API_KEY}`
-      )}`
-    );
-
-    const proxyData = await res.json();
-    const data = JSON.parse(proxyData.contents);
-
-    const rate = parseFloat(data["Realtime Currency Exchange Rate"]["5. Exchange Rate"]);
-    if (!rate) throw new Error();
-
-    let symbol = "";
     if (lastUSDJPY !== null) {
-      symbol = rate > lastUSDJPY ? "▲" : rate < lastUSDJPY ? "▼" : "";
+      usdSymbol = usdPrice > lastUSDJPY ? "▲" : usdPrice < lastUSDJPY ? "▼" : "";
     }
-    lastUSDJPY = rate;
 
-    return `【ドル円】${rate.toFixed(2)} ${symbol}`;
+    lastEWJ = ewjPrice;
+    lastUSDJPY = usdPrice;
+
+    cachedStockText =
+      `【日経ETF(EWJ)】${ewjPrice.toFixed(2)} ${ewjSymbol}` +
+      ` ｜ 【ドル円】${usdPrice.toFixed(2)} ${usdSymbol}`;
 
   } catch {
-    return cachedUSD; // 失敗時は前回値維持
+    // 失敗時は前回値維持
   }
 }
 
-// ===== 株価まとめ更新（5分ごと）=====
-async function updateStocks() {
-  cachedNikkei = await fetchNikkei();
-  cachedUSD = await fetchUSDJPY();
-}
-
-// ===== Ticker更新（1分ごと）=====
+// ===== Ticker更新 =====
 async function updateTicker() {
   const news = await fetchNews();
-  const text = `${cachedNikkei} ｜ ${cachedUSD} ｜ ${news} ｜ `;
+  const text = `${cachedStockText} ｜ ${news} ｜ `;
   document.getElementById("tickerText").innerHTML = text;
 }
 
 // ===== 初回実行 =====
-updateStocks();
+fetchStocks();
 updateTicker();
 
-// ニュース60秒ごと
+// ニュース1分ごと
 setInterval(updateTicker, 60000);
 
-// 株価5分ごと（API安定対策）
-setInterval(updateStocks, 300000);
+// 株価5分ごと（十分安定）
+setInterval(fetchStocks, 300000);
 
 </script>
 
