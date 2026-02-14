@@ -87,12 +87,27 @@ let lastUSDJPY = null;
 // ===== ニュース取得（フォールバック＋カテゴリ色分け） =====
 async function fetchNews() {
   try {
-   const res = await fetch(NEWS_URL);
-const data = await res.json();
-const parser = new DOMParser();
-const xml = parser.parseFromString(data.contents, "text/xml");
-const items = xml.querySelectorAll("item");
-lastNews = Array.from(items).slice(0,6).map(item => item.querySelector("title").textContent).join(" ｜ ");
+    const rssUrl = "https://news.yahoo.co.jp/rss/topics/top-picks.xml";
+    const proxyUrl = "https://api.allorigins.win/get?url=" + encodeURIComponent(rssUrl);
+
+    const res = await fetch(proxyUrl);
+    const data = await res.json();
+
+    const parser = new DOMParser();
+    const xml = parser.parseFromString(data.contents, "text/xml");
+    const items = xml.querySelectorAll("item");
+
+    lastNews = Array.from(items)
+      .slice(0, 6)
+      .map(item => item.querySelector("title").textContent)
+      .join(" ｜ ");
+
+  } catch (error) {
+    console.error("ニュース取得エラー:", error);
+    lastNews = "ニュース取得エラー";
+  }
+}
+
 
         // 簡易カテゴリ判定
         let cls = 'news-other';
