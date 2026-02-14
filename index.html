@@ -9,65 +9,88 @@ body {
   overflow: hidden;
 }
 
+/* ===== ラッパー ===== */
 .ticker-wrap {
   position: fixed;
   bottom: 0;
   width: 100%;
   height: 70px;
-  background: rgba(0,0,0,0.9);
+  background: rgba(0,0,0,0.92);
   border-top: 4px solid #ff6600;
   display: flex;
   align-items: center;
   overflow: hidden;
+  font-family: "Courier New", monospace;
 }
 
+/* ===== LIVEドット ===== */
+.live-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #ff3300;
+  margin: 0 15px;
+  box-shadow: 0 0 10px #ff3300;
+  animation: blink 1.2s infinite;
+}
+
+@keyframes blink {
+  0%,100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+/* ===== テキスト ===== */
 .ticker {
-  display: inline-block;
   white-space: nowrap;
   padding-left: 100%;
-  animation: ticker 100s linear infinite, glow 1.2s infinite alternate;
   font-size: 30px;
-  font-family: "Courier New", monospace;
   color: #ff8800;
   text-shadow:
     0 0 5px #ff6600,
-    0 0 10px #ff6600,
-    0 0 20px #ff3300,
-    0 0 40px #ff2200;
+    0 0 15px #ff6600,
+    0 0 30px #ff3300;
+  animation: ticker 90s linear infinite;
 }
 
+/* 超ゆったりスクロール */
 @keyframes ticker {
   0% { transform: translateX(0); }
   100% { transform: translateX(-100%); }
 }
 
-@keyframes glow {
-  from {
-    text-shadow: 0 0 5px #ff6600, 0 0 15px #ff6600, 0 0 30px #ff3300;
-  }
-  to {
-    text-shadow: 0 0 10px #ffaa00, 0 0 25px #ff6600, 0 0 45px #ff3300;
-  }
+/* 更新フラッシュ */
+.flash {
+  animation: flash-bg 0.6s ease;
+}
+
+@keyframes flash-bg {
+  0% { background: rgba(255,100,0,0.4); }
+  100% { background: rgba(0,0,0,0.92); }
+}
+
+/* 重要ワード強調 */
+.important {
+  color: #ff3300;
+  text-shadow:
+    0 0 10px #ff0000,
+    0 0 20px #ff0000,
+    0 0 35px #ff6600;
 }
 </style>
 </head>
 <body>
 
-<div class="ticker-wrap">
+<div class="ticker-wrap" id="wrap">
+  <div class="live-dot"></div>
   <div class="ticker" id="tickerText">
-    データ取得中...
+    ニュース取得中...
   </div>
 </div>
 
 <script>
 
-// ===== キャッシュ保存 =====
-let lastNews = "ニュース取得中...";
-let lastEWJ = null;
-let lastUSDJPY = null;
-let cachedStockText = "株価取得中...";
+let lastNews = "";
 
-// ===== ニュース取得（CORS回避）=====
 async function fetchNews() {
   try {
     const rssUrl = "https://news.yahoo.co.jp/rss/topics/top-picks.xml";
@@ -80,79 +103,50 @@ async function fetchNews() {
     const xml = parser.parseFromString(data.contents, "text/xml");
     const items = xml.querySelectorAll("item");
 
-    lastNews = Array.from(items)
+    const headlines = Array.from(items)
       .slice(0, 6)
-      .map(item => item.querySelector("title").textContent)
-      .join(" ｜ ");
+      .map(item => item.querySelector("title").textContent);
 
-  } catch {
-    lastNews = "ニュース取得エラー";
-  }
+    return headlines.join(" ｜ ");
 
-  return lastNews;
-}
-
-// ===== Yahoo Finance株価取得 =====
-async function fetchStocks() {
-  try {
-    const url = "https://query1.finance.yahoo.com/v7/finance/quote?symbols=EWJ,JPY=X";
-
-    const proxyUrl = "https://corsproxy.io/?" + encodeURIComponent(url);
-
-    const res = await fetch(proxyUrl);
-    const data = await res.json();
-
-    const results = data.quoteResponse.result;
-
-    const ewj = results.find(r => r.symbol === "EWJ");
-    const usd = results.find(r => r.symbol === "JPY=X");
-
-    if (!ewj || !usd) return;
-
-    const ewjPrice = ewj.regularMarketPrice;
-    const usdPrice = usd.regularMarketPrice;
-
-    let ewjSymbol = "";
-    let usdSymbol = "";
-
-    if (lastEWJ !== null) {
-      ewjSymbol = ewjPrice > lastEWJ ? "▲" : ewjPrice < lastEWJ ? "▼" : "";
-    }
-
-    if (lastUSDJPY !== null) {
-      usdSymbol = usdPrice > lastUSDJPY ? "▲" : usdPrice < lastUSDJPY ? "▼" : "";
-    }
-
-    lastEWJ = ewjPrice;
-    lastUSDJPY = usdPrice;
-
-    cachedStockText =
-      `【日経ETF(EWJ)】${ewjPrice.toFixed(2)} ${ewjSymbol}` +
-      ` ｜ 【ドル円】${usdPrice.toFixed(2)} ${usdSymbol}`;
-
-  } catch (err) {
-    console.log("株価取得エラー", err);
+  } catch (error) {
+    console.log("ニュース取得エラー", error);
+    return lastNews || "ニュース取得エラー";
   }
 }
 
-// ===== Ticker更新 =====
+function highlightImportant(text) {
+  const keywords = ["速報","地震","緊急","総理","日銀","円安","事件"];
+  keywords.forEach(word => {
+    const regex = new RegExp(word, "g");
+    text = text.replace(regex, `<span class="important">${word}</span>`);
+  });
+  return text;
+}
+
 async function updateTicker() {
   const news = await fetchNews();
-  const text = `${cachedStockText} ｜ ${news} ｜ `;
-  document.getElementById("tickerText").innerHTML = text;
+
+  if (news && news !== lastNews) {
+    lastNews = news;
+
+    const highlighted = highlightImportant(news);
+    document.getElementById("tickerText").innerHTML =
+      highlighted + " ｜ ";
+
+    // フラッシュ演出
+    const wrap = document.getElementById("wrap");
+    wrap.classList.add("flash");
+    setTimeout(() => wrap.classList.remove("flash"), 600);
+  }
 }
 
-// ===== 初回実行 =====
-fetchStocks();
+// 初回＋30秒更新
 updateTicker();
-
-// ニュース1分ごと
-setInterval(updateTicker, 60000);
-
-// 株価5分ごと（十分安定）
-setInterval(fetchStocks, 300000);
+setInterval(updateTicker, 30000);
 
 </script>
 
 </body>
 </html>
+
